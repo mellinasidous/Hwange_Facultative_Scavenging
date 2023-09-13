@@ -1,0 +1,385 @@
+---
+title: "Hwange new voronoi diagram"
+author: "Mellina Sidous"
+date: '2022-07-18'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r,results='hide', echo=FALSE, message=FALSE, include=FALSE, warning=FALSE}
+#load libraries
+library(tidyverse)
+library(RColorBrewer)
+library(maps)
+library(maptools)
+library(spatstat)
+library(rgeos)
+library(sf)
+library(viridis)
+library(gridExtra)
+
+#install.packages("maps")
+
+#load data
+#waterpoints
+hey<-st_read("map/coordinates_waterhole/final.shp")
+#border
+bord<-st_read("data/data_gis/borders/Border.shp")
+#blocks
+blocks <- st_read("data/data_gis/blocks/Blocks.shp")
+
+
+
+```
+
+```{r, echo = FALSE, message=FALSE, include=FALSE}
+## faire le script bkgfun.r 
+
+setwd("~/Desktop/projet_1/hwange_hypohyper")
+source(file="voronoi/poolwt_to_create_voronoi.R", local = knitr::knit_global())
+
+
+```
+
+
+
+
+# My data
+
+I have 153 data points located around Hwange National Park (HNP) and its 10 management zones.  
+  
+
+```{r, echo=FALSE}
+#, fig.keep='all'
+#plot border
+plot(blocks$geometry,col=alpha(brewer.pal(10,"PuOr" ), 0.5))
+#plot waterholes
+plot(hey$geometry,pch=16, cex=0.5, add = TRUE) 
+
+```
+
+
+# Waterholes' Attraction zone  
+
+
+
+Since most animals need to visit them to drink, waterhole are "attractors" in the landscape. Thus counts at waterholes are supposed to give a picture of the density in the neighboring area of the waterhole, its "attraction zone". 
+
+In the case of permanent waterhole, this attraction stops when another one's starts, and it has its own sampling unit.
+
+In can also happens that several non permanent and neighboring waterhole form a "morcelated permanent waterhole" when most of the time one of them is full. They can be considered as sharing an "attraction zone"and form all together one sampling unit.  
+
+Moreover, some non-permanent waterholes can participate punctually to the attraction of a permanent one and be incorporated into its sampling unit. 
+
+
+This was discussed in Nolwenn Hoguet Drouet's PhD (page 72), that used voronoi diagram to approximate the attraction zone of the permanent and morcelated waterhole.
+
+
+
+## Previous voronoi diagram of Hwange
+
+
+
+Voronoi diagrams can give an approximation of the attraction phenomenon. 
+
+They are a way to create tessellations, that consist in covering an entire plan surface with shapes, here polygons, so there are no gaps or overlaps. It creates the different polygons using the bissectrices between neighboring points.  
+Here we can consider that every cell created by the tessellation represent the "attraction zone" of each point, and thus a sampling unit of Hwange's Dynamic.  
+
+
+These points used for the tesselation are the coordinates of permanent waterhole that have their own attraction zone and sampling unit, or centroids of the different waterhole that share and attraction zone, and thus a sampling unit.  
+
+
+
+
+
+
+Here is the tesselation created in Nolwenn's PhD :  
+
+
+
+
+<center>
+![Nolwenn's tesselation tiles](Nolwenn_tess.png){width=550px}
+</center>
+And here we can see the waterpoint used :
+
+<center>
+![Nolwenn's tesselation tiles : waterholes and their centroids](Nolwenn_tess_points.png){width=550px}
+</center>
+We can see that waterholes belonging to "morcelated waterhole" cells (such as shabe, ngweshla cells) are linked to their centroids. In the opposite permanent waterholes, suchs as jambile, josivanini or beaver, have their own attraction zone.   
+
+
+
+
+In my work, I am not using exactly the same study area, and some waterhole were added or removed from my dataset. 
+`
+
+
+## My voronoi diagram 
+  
+  
+  
+
+```{r}
+head(to_tess )
+
+```
+
+```{r, echo=FALSE}
+to_tess_raw<- to_tess
+
+```
+
+I transformed this dataset to keep one line by tesselation cell :
+
+```{r cars, echo=FALSE}
+## change data to perform the tesselation (keep one line by attraction points)
+to_tess <- st_drop_geometry(to_tess) %>% select(tess_name,meanx, meany) %>% group_by(tess_name)%>% slice(1) %>% ungroup()
+
+head(to_tess)
+
+```
+  
+And I can perform the voronoi diagram 
+
+```{r pressure}
+W<-as.owin(bord)## transform bord into owin class to have tesselation limited to the borders 
+
+### points a tesseler 
+X <- ppp(x=to_tess$meanx,
+         y=to_tess$meany, window = W)
+
+y <- dirichlet(X) # Dirichlet tesselation
+```
+
+And tadaaaa ! Here are the tiles created:  
+
+```{r}
+plot(y )#+# Plot tesselation
+
+```
+
+We can compare the Nolwenn's one and mine by comparing the names (a chunk of code is to be activated in the RMD to get each cell ploted one by one on the map and get a better visibility). 
+
+```{r, echo =FALSE}
+plot(y )#+# Plot tesselation
+text(to_tess$meanx, to_tess$meany, labels=to_tess$tess_name, cex = 0.4)
+
+badvision<- to_tess%>% subset( tess_name != "shabe"& tess_name != "basha"& tess_name != "littledzi" & tess_name != "josivanini"& tess_name != "makona" & tess_name != "njekwa" & tess_name != "nehimba" & tess_name != "mopane"& tess_name != "shumba"& tess_name != "wexcau"& tess_name != "bigtoms"& tess_name != "tshompani" & tess_name != "mtoa"& tess_name != "manga_2" & tess_name != "manga_3" & tess_name != "dom"& tess_name != "tshakabika" & tess_name != "dopi" & tess_name != "guvalala"& tess_name != "mbiza"& tess_name != "sinanga" & tess_name != "guvalala"& tess_name != "secheche"& tess_name != "tshakabika" & tess_name != "basha"& tess_name != "mandavu"& tess_name != "nantwich"&tess_name != "makololov" &tess_name != "linkwasha")
+
+
+######################################################################
+##loop to activiate to see non visible names one by one :
+######################################################################
+#for(i in 1: length(badvision$tess_name)){
+#one_t<- badvision %>% subset(tess_name == badvision$tess_name[i])
+# plot(y )#+# Plot tesselation
+#text(one_t$meanx, one_t$meany, labels=badvision$tess_name[i], cex = 0.4)
+#}
+```
+
+And we can see the points used for the tesselations : 
+```{r, echo=FALSE}
+plot(y )#+# Plot tesselation
+plot(X,cex=0.7, pch = 4, add = TRUE) #add coordinates used for the voronoi diagram
+
+
+
+```
+
+These points are whether the coordinates of permanent waterholes, or the centroids of morcelated permanent waterholes :  
+
+```{r, echo= FALSE}
+used <- hey %>% subset (waterpoint != "garamkwe" & waterpoint != "chivisa" & waterpoint != "boss_long_one_pan"  & waterpoint !="chris'_pan"  & 
+                          waterpoint !="somalisa_camp"  & waterpoint !="somalisa_acacia"  & waterpoint !="ray's_pan"  & waterpoint !="masumamalisa" & waterpoint !="tamafupa")
+
+```
+
+```{r, echo=FALSE}
+plot(y )#+# Plot tesselation
+plot(X,cex=0.5,pch=4, add = TRUE) #add coordinates used for the voronoi diagram
+plot(used$geometry,cex=0.4, pch=16, add=TRUE)
+
+
+```
+
+
+Finally we can add the borders of the management blocks on top to understand what I should include in my analysis : 
+
+```{r, echo=FALSE}
+plot(blocks$geometry,col=alpha(brewer.pal(10,"PuOr" ), 0.5))
+plot(y, add= TRUE )#+# Plot tesselation
+plot(X,cex=0.5,pch=4, add = TRUE) #add coordinates used for the voronoi diagram
+plot(used$geometry,cex=0.4, pch=16, add=TRUE)
+
+
+```
+
+
+```{r, echo=FALSE}
+plot(blocks$geometry,col=alpha(brewer.pal(10,"PuOr" ), 0.5))
+plot(y, add= TRUE )#+# Plot tesselation
+plot(X,cex=0.5, add = TRUE) #add coordinates used for the voronoi diagram
+
+
+```
+
+
+
+```{r, echo = FALSE}
+
+one_tess <- to_tess %>% subset(tess_name == "tsamhole" | tess_name == "dekacamp" |tess_name == "reedbuck_vlei" |tess_name == "nantwich" |tess_name == "mahohoma_2" |tess_name == "littletoms" |tess_name == "robins" |tess_name == "saltpan"  |tess_name == "new_mashambo"  |tess_name == "detepicnic"  |tess_name == "chingahobe"  |tess_name == "bumboo"  |tess_name == "bumboosp1"  |tess_name == "mandavu"  |tess_name == "saltspring"  |tess_name == "baobab"   |tess_name == "shumba"  |tess_name == "tshakabika"  |tess_name == "tshompani"  |tess_name == "mopane"  |tess_name == "inyantue"  |tess_name == "mtoa"  | tess_name == "tshabema"  |tess_name == "tshebe"  |tess_name == "livingi"  |tess_name == "mabuya"  |tess_name == "whitehills"  |tess_name == "guvalala"  |tess_name == "balla"  |tess_name == "sedina"  |tess_name == "umkhawu"  |tess_name == "nyamandhlovu"  |tess_name == "caterpillar"  |tess_name == "umtshibi"  |tess_name == "makwa"  |tess_name == "dopi"  |tess_name == "jambile"  |tess_name == "manga_1" |tess_name == "manga_2"  |tess_name == "manga_3"  |tess_name == "dom"  |tess_name == "sinanga"  |tess_name == "kennedy_2"  |tess_name == "mbiza"  |tess_name == "ngweshla"  |tess_name == "samavund"  |tess_name == "mahohoma_2"  |tess_name == "makololov"  |tess_name == "wexcau"  |tess_name == "linkwasha"  |tess_name == "makona"  |tess_name == "madundumela"  |tess_name == "mandiseka"  |tess_name == "mfagazaan")
+
+
+plot(blocks$geometry,col=alpha(brewer.pal(10,"PuOr" ), 0.5))
+plot(y, add= TRUE )#+# Plot tesselation
+text(one_tess$meanx, one_tess$meany, labels= "O", cex = 0.5)
+
+
+```
+
+__Step 3__
+
+Out of those cell in the 4 management blocks, I should select those that are followed over the study periods.  
+*Period 1 : From 1972 to 1986  
+*Period 2 : From 1987 to 1992  
+*Period 3 : From 1993 to 2007   
+*Period 3 : From 2008 to 2020
+
+I created heatmap to have a vision of that.  
+
+Following the baobab example, there is a heatmap for each voronoi cell and the number of years followed for each of its waterhole. In yellow are the year followed and in purple the years that were not.  
+
+```{r, echo=FALSE}
+# import data 
+load("data/HNP_w_noftime.RData")
+
+HNP_ntimes <- HNP_ntime
+colnames(HNP_ntimes)[3]<- "waterpoint"
+
+dat<-  right_join(HNP_ntimes, to_tess_raw[,c(1, 5:7)], by = "waterpoint")
+
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE}
+
+### now loop over the cells we want 
+
+cellinblocks<- dat %>% subset(tess_name %in% one_tess$tess_name)
+
+loop_tess<-cellinblocks %>% group_by(tess_name) %>% slice(1) %>% select(tess_name)
+
+plotslist <- list()
+
+plotslist2 <- list()
+
+for (i in 1:length(loop_tess$tess_name)){
+  
+HNP_data1 <- as.data.frame(cellinblocks) %>% filter (tess_name == loop_tess$tess_name[i])
+
+HNP_data_site <- HNP_data1 %>%
+  dplyr::select(date,waterpoint, Total) %>%
+  mutate( Total = as.numeric(Total), date = as.numeric(date))
+
+
+agg = aggregate(HNP_data_site$Total,
+                by = list(HNP_data_site$date, HNP_data_site$waterpoint),
+                FUN = sum)
+
+sites_file <- agg %>%
+  pivot_wider(names_from="Group.2",
+              values_from=x)
+
+##to get the total
+site_count1 <- sites_file
+site_count1<-site_count1[order(site_count1$Group.1,decreasing=F), ]
+
+typeof(as.data.frame(site_count1))
+typeof(site_count1)
+
+sites_count2<- site_count1
+site_count1[!is.na(site_count1)] <- 1
+site_count1[is.na(site_count1)] <- 0
+
+
+
+site_count1$Group.1 <-  sites_count2$Group.1
+
+tryz1<- site_count1 %>%
+  pivot_longer(!Group.1, names_to = "waterhole", values_to = "obs") %>%
+  group_by(waterhole) %>%
+  complete(Group.1 = 1972:2020) 
+
+tryz1[is.na(tryz1)]<- 0
+
+
+title_gg<- loop_tess$tess_name[i]
+
+ggppt1 <-ggplot(tryz1, aes(Group.1, waterhole , fill= as.factor(obs))) + 
+  geom_tile() +
+  ggtitle(title_gg) +
+  labs(y="waterhole", x = "Year") +
+  theme( axis.text.x = element_text(size=5, angle=45),
+         axis.text.y = element_text(size=5)) +
+  scale_fill_viridis(labels=c('0=no', '1 =yes'),discrete = TRUE) + guides(fill=guide_legend(title="Observation that year ?"))# + 
+#plot(ggppt)
+
+ggppt <-ggplot(tryz1, aes(Group.1, waterhole , fill= as.factor(obs))) + 
+  geom_tile() +
+  ggtitle(title_gg) +
+  labs(y="waterhole", x = "Year") +
+  theme( axis.text.x = element_text(size=5, angle=45),
+         axis.text.y = element_text(size=5)) +
+  scale_fill_viridis(labels=c('0=no', '1 =yes'),discrete = TRUE) +
+  theme(legend.position = "none")
+#plot(ggppt)
+
+plotslist[[i]]<- ggppt
+plotslist2[[i]] <- ggppt1
+}
+
+## if we want to plot one by one 
+#plotslist
+
+plotslist2[[2]]
+#but to create the html I prefer to plot several on the same graph to have something more convenient to read
+grid.arrange(plotslist[[1]], plotslist[[2]], plotslist[[3]], plotslist[[4]],plotslist[[5]], plotslist[[6]],ncol=3,nrow=3)
+
+grid.arrange( plotslist[[7]], plotslist[[8]], plotslist[[9]], plotslist[[10]], plotslist[[11]], plotslist[[12]],ncol=3,nrow=3)
+
+ grid.arrange( plotslist[[13]], plotslist[[14]], plotslist[[15]], plotslist[[16]], plotslist[[17]], plotslist[[18]],ncol=3,nrow=3)
+ 
+ grid.arrange( plotslist[[19]], plotslist[[20]], plotslist[[21]], plotslist[[22]], plotslist[[23]], plotslist[[24]],ncol=3,nrow=3)
+
+ grid.arrange(plotslist[[25]], plotslist[[26]], plotslist[[27]], plotslist[[28]], plotslist[[29]], plotslist[[30]],ncol=3,nrow=3)
+              
+   grid.arrange(plotslist[[31]], plotslist[[32]],plotslist[[33]], plotslist[[34]], plotslist[[35]], plotslist[[36]],ncol=3,nrow=3)
+
+   grid.arrange( plotslist[[37]], plotslist[[38]], plotslist[[39]], plotslist[[40]], plotslist[[41]], plotslist[[42]],ncol=3,nrow=3)
+  
+   grid.arrange( plotslist[[43]], plotslist[[44]], plotslist[[45]], plotslist[[46]], plotslist[[47]], plotslist[[48]],ncol=3,nrow=3)
+  
+   grid.arrange( plotslist[[49]], plotslist[[50]], plotslist[[51]], plotslist[[52]], plotslist[[53]], ncol=3,nrow=3)
+          
+          
+
+
+```
+
+Following these plots I would keep the following cells
+
+```{r, echo=FALSE}
+ to_analyze <- to_tess%>% subset(tess_name == "baobab" | tess_name == "caterpillar" |tess_name == "chingahobe" |tess_name == "detepicnic" |tess_name == "dopi" |tess_name == "guvalala" |tess_name == "inyantue" |tess_name == "jambile"  |tess_name == "kennedy_2"  |tess_name == "little_toms"  |tess_name == "livingi"  |tess_name == "mabuya"  |tess_name == "makona"  |tess_name == "makwa"  |tess_name == "mandavu"  |tess_name == "mandiseka"   |tess_name == "manga_1"  |tess_name == "manga_3"  |tess_name == "mfagazaan"  |tess_name == "nantwich"  |tess_name == "new_mashambo"  |tess_name == "ngweshla"  | tess_name == "nyamandhlovu"  |tess_name == "reedbuck_vlei"  |tess_name == "saltpan"  |tess_name == "saltspring"  |tess_name == "samavundhla"  |tess_name == "sedina"  |tess_name == "shumba"  |tess_name == "sinanga"  |tess_name == "tsamhole"  |tess_name == "tshabema"  |tess_name == "tshakabika"  |tess_name == "tshebe"  |tess_name == "tshompani"  |tess_name == "umkhawu"  |tess_name == "wexcau" )
+
+
+plot(blocks$geometry,col=alpha(brewer.pal(10,"PuOr" ), 0.5))
+plot(y, add= TRUE )#+# Plot tesselation
+text(to_analyze$meanx, to_analyze$meany, labels= "O", cex = 0.5)
+
+```
+
