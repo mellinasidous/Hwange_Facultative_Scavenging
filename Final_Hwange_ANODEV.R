@@ -10,7 +10,7 @@ require(zoo)
 #'
 #'Load data
 #------------------------
-## Density estimates of the model
+## Density predictions from the model
 load("results/herbivores_estimates_newrain.RData")
 load("results/hyena_estimates_newrain.RData")
 ## Model results : 
@@ -74,8 +74,9 @@ dev_timevar_herb <- -2 * herbivore_models$herb_ut$logLik
 
 devs_herb <- list(dev_cst_herb=dev_cst_herb, dev_per_herb=dev_per_herb,dev_timevar_herb=dev_timevar_herb )
 
+# perform ANODEV
 X_herb <- ((dev_cst_herb - dev_per_herb) / n1) / ((dev_per_herb-dev_timevar_herb)/n2)
-f_herb<-1-pf(X_herb,n1,n2)
+f_herb<-1-pf(X_herb,n1,n2) # compute f stat
 r_herb<-(dev_cst_herb - dev_per_herb) / (dev_cst_herb - dev_timevar_herb)
 
 #list for the results for preys
@@ -95,7 +96,7 @@ devs_hyen <- list(dev_cst_hyen= dev_cst_hyen, dev_per_hyen=dev_per_hyen, dev_tim
 n1 <- npar_period - npar_constant
 n2 <- npar_timevar - npar_period
 
-
+# perform anodev for hyaena
 X_hyen <- ((dev_cst_hyen - dev_per_hyen) / n1) / ((dev_per_hyen-dev_timevar_hyen)/n2)
 f_hyen<-1-pf(X_hyen,n1,n2)
 r_hyen<-(dev_cst_hyen - dev_per_hyen) / (dev_cst_hyen - dev_timevar_hyen)

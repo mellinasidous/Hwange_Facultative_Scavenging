@@ -28,12 +28,12 @@ load("data/matrix_tess_hyena_ponderate.RData") # HYENAS
 #'
 #'
 #'
-#'ARRANGE DATA (run the line depending is the analysis is being run for herbivores or hyenas)
+#'ARRANGE DATA (run the line depending on if the analysis is being run for herbivores or hyenas)
 #--------------------------------------
 # put na for caterpillar 2013
 herbivore_matrix[1,42] <- NA
 hyena_matrix[1,42] <- NA
-# remove umkawhazaan
+# remove umkawhazaan(hyaena dens are present)
 sp_data <- herbivore_matrix[-17,]# - umkhawuazaan
 # or
 sp_data <- hyena_matrix[-17,]
@@ -213,7 +213,7 @@ hyena_params <- list(para_u_cst, para_ut, para_per)
 
 
 
-#######################################################" CODE POUR RE CHECKER LES RESIDUS
+#######################################################" CODE to check residuals 
 MARSSresiduals(fituconstant)$model.residuals
 plot(residuals(fituconstant))
 plot(MARSSresiduals(fituconstant)$model.residuals)
